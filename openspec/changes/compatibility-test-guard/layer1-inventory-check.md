@@ -148,22 +148,47 @@ public class InventoryCheck {
 
 清单检查最终要作为测试跑起来。
 
+详见：`openspec/changes/compatibility-test-guard/inventory-junit-integration.md`
+
+### 核心设计
+
 ```java
 @Test
-public void inventoryCheckShouldPass() {
+@DisplayName("所有依赖的算法/协议都应被当前 JDK 支持")
+void inventoryShouldPass() {
     Inventory inventory = InventoryLoader.load("compatibility-inventory.yaml");
-    InventoryScanResult scan = new InventoryScanner().scan();
-    List<InventoryCheck> checks = new InventoryComparator(inventory, scan).compare();
+    InventoryScanResult scanResult = new JdkInventoryScanner().scan();
+    List<InventoryCheck> checks = new InventoryComparator(inventory, scanResult).compare();
     
     List<InventoryCheck> failures = checks.stream()
         .filter(c -> c.getStatus() == CheckStatus.FAIL)
         .toList();
     
+    List<InventoryCheck> warnings = checks.stream()
+        .filter(c -> c.getStatus() == CheckStatus.WARN)
+        .toList();
+    
+    // WARN 打印但不失败
+    warnings.forEach(w -> System.out.println("[WARN] " + w.getMessage()));
+    
+    // FAIL 导致断言失败
     assertThat(failures)
         .withFailMessage(() -> formatFailures(failures))
         .isEmpty();
 }
 ```
+
+### 关键决策
+
+| 方面 | 建议 |
+|------|------|
+| JUnit 版本 | JUnit 5 (Jupiter) |
+| 断言库 | AssertJ |
+| 测试结构 | 单一测试方法（第一版） |
+| 清单文件位置 | `src/test/resources/compatibility-inventory.yaml` |
+| FAIL 处理 | 测试失败，CI 再配置 `allow_failure` |
+| WARN 处理 | 打印日志，不导致测试失败 |
+| 运行阶段 | `mvn test`，和单元测试一起 |
 
 ### CI 策略
 
