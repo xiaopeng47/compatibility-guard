@@ -105,12 +105,25 @@ public class JdkInventoryScanner implements InventoryScanner {
 
 定义“依赖算法”和“当前环境”之间的关系。
 
+详见：`openspec/changes/compatibility-test-guard/inventory-comparator-design.md`
+
+### 四条核心规则
+
 | 规则 | 含义 | 示例 |
 |------|------|------|
-| `REQUIRED_SUPPORTED` | 必须在支持列表中 | `TLSv1.2` 在 `supportedTlsProtocols` 里 |
-| `REQUIRED_ENABLED` | 最好在默认启用列表中 | `TLSv1.2` 在 `enabledTlsProtocols` 里 |
-| `NOT_DISABLED` | 不能在禁用列表中 | cipher 不在 `disabledTlsAlgorithms` 里 |
+| `REQUIRED_SUPPORTED` | 依赖算法必须在支持列表中 | `TLSv1.2` 在 `supportedTlsProtocols` 里 |
+| `REQUIRED_ENABLED` | 依赖算法最好在默认启用列表中 | `TLSv1.2` 在 `enabledTlsProtocols` 里 |
+| `NOT_DISABLED` | 依赖算法不能在禁用列表中 | cipher 不在 `disabledTlsAlgorithms` 里 |
 | `PROVIDER_PRESENT` | provider 必须已加载 | `SunJSSE` 在 provider 列表里 |
+
+### 规则与字段映射
+
+| 字段 | 默认规则 |
+|------|---------|
+| `tlsProtocols` | REQUIRED_SUPPORTED + REQUIRED_ENABLED |
+| `tlsCipherSuites` | REQUIRED_SUPPORTED + NOT_DISABLED |
+| `kerberosEnctypes` | REQUIRED_SUPPORTED |
+| `providers` | PROVIDER_PRESENT |
 
 ### 输出结构
 
@@ -120,9 +133,16 @@ public class InventoryCheck {
     String required;         // "TLSv1.2"
     String actual;           // "supported" / "disabled" / "missing"
     CheckStatus status;      // PASS / FAIL / WARN
+    String rule;             // "REQUIRED_SUPPORTED"
     String message;          // 人类可读说明
 }
 ```
+
+### 关键难点
+
+- `jdk.tls.disabledAlgorithms` 格式复杂，含条件表达式（如 `RSA keySize < 1024`）
+- 禁用算法对 cipher suite 是子串匹配而非精确匹配
+- WARN（默认未启用）和 FAIL（不支持/被禁用）要区分清楚
 
 ## 第四步：集成到 JUnit
 
