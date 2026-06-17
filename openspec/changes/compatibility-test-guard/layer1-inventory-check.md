@@ -55,24 +55,16 @@ required:
 
 扫描器负责读取当前运行时环境，回答“当前支持什么”。
 
-| 扫描项 | 扫描方式 | 说明 |
-|--------|---------|------|
-| TLS 协议支持性 | `SSLContext.getDefault().getSupportedSSLParameters().getProtocols()` | JDK 支持哪些 TLS 版本 |
-| TLS 默认启用协议 | `SSLParameters.getProtocols()` | 默认会协商哪些 |
-| TLS 禁用算法 | `Security.getProperty("jdk.tls.disabledAlgorithms")` | 被 `java.security` 禁用的 |
-| TLS 支持的 cipher | `SSLParameters.getCipherSuites()` | 客户端/服务端支持列表 |
-| Provider 列表 | `Security.getProviders()` | 已加载的安全 provider |
-| Kerberos etype | `Security.getProperty("permitted_enctypes")` | 允许的 etype |
-| Kerberos 默认 etype | `krb5.conf` / `sun.security.krb5.Config` | 默认偏好 |
+详见：`openspec/changes/compatibility-test-guard/inventory-scanner-design.md`
 
-### 关键设计
+### 核心设计
 
 ```java
 public interface InventoryScanner {
     InventoryScanResult scan();
 }
 
-public class JdkInventoryScanner {
+public class JdkInventoryScanner implements InventoryScanner {
     public InventoryScanResult scan() {
         return InventoryScanResult.builder()
             .supportedTlsProtocols(scanSupportedTlsProtocols())
@@ -86,10 +78,28 @@ public class JdkInventoryScanner {
 }
 ```
 
+### 扫描项摘要
+
+| 扫描项 | 扫描方式 | 说明 |
+|--------|---------|------|
+| TLS 协议支持性 | `SSLContext.getDefault().getSupportedSSLParameters().getProtocols()` | JDK 支持哪些 TLS 版本 |
+| TLS 默认启用协议 | `SSLParameters.getProtocols()` | 默认会协商哪些 |
+| TLS 禁用算法 | `Security.getProperty("jdk.tls.disabledAlgorithms")` | 被 `java.security` 禁用的 |
+| TLS 支持的 cipher | `SSLParameters.getCipherSuites()` | 客户端/服务端支持列表 |
+| Provider 列表 | `Security.getProviders()` | 已加载的安全 provider |
+| Kerberos etype | `Security.getProperty("permitted_enctypes")` | 允许的 etype |
+| Kerberos 默认 etype | `krb5.conf` / `sun.security.krb5.Config` | 默认偏好 |
+
+### 第一阶段范围
+
+- **必做**：`JdkInventoryScanner`（JDK 版本、TLS、Provider、Kerberos etype）
+- **可选/延后**：KafkaScanner、SshScanner、HttpsScanner（依赖具体客户端库）
+
 ### 难点
 
 - SSHD / Kafka Client 的默认支持算法列表，可能没法直接通过标准 API 拿到，需要反射或读取配置。
 - “支持”和“默认启用”是两个概念，要分开处理。
+- JDK 17+ 强封装影响 Kerberos 内部 API 访问。
 
 ## 第三步：实现清单比对规则
 
