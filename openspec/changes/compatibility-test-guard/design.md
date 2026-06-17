@@ -639,5 +639,3 @@ required:
 - 方案提案：`openspec/changes/compatibility-test-guard/proposal.md`
 - 执行任务：`openspec/changes/compatibility-test-guard/tasks.md`
 - 能力级采集规范：`openspec/specs/compatibility-guard/spec.md`
-- 第一层实施计划：`openspec/changes/compatibility-test-guard/layer1-inventory-check.md`
-- 第二层实施计划：`openspec/changes/compatibility-test-guard/layer2-handshake-probe.md`
