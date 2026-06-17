@@ -196,41 +196,7 @@ void inventoryShouldPass() {
 - `allow_failure`：失败不阻塞 PR
 - 输出清单检查报告
 
-## 第五步：生成初始清单
-
-清单不能凭空写，需要从已有信息推导。
-
-| 来源 | 推导方式 |
-|------|---------|
-| 现有 baseline 文件 | 从 `negotiated` 字段里用的算法反推 |
-| 业务配置 | 读取 `application.yml` / `kafka.properties` / `ssl` 配置 |
-| 三方对接文档 | 人工整理伙伴要求的算法 |
-| 代码扫描 | 搜索 `ssl.enabled.protocols`、`sasl.mechanism` 等关键字 |
-
-### 建议
-
-- 第一版先人工整理最小集合
-- 后续逐步从基线和配置中反推补全
-
-## 第六步：输出报告
-
-清单检查要产出可读报告，而不仅仅是 PASS/FAIL。
-
-```
-[PASS] JDK TLSv1.2 仍受支持
-[PASS] JDK TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 未被禁用
-[FAIL] Kerberos etype rc4-hmac 在当前 JDK 默认禁用
-[WARN] SSH kex diffie-hellman-group14-sha256 存在但不在默认偏好前列
-```
-
-### 报告格式选择
-
-- 控制台文本
-- JSON 文件
-- JUnit XML（通过测试框架自然生成）
-- HTML 报告（后续扩展）
-
-## 第七步：与第二层的关系
+## 第五步：与第二层的关系
 
 清单检查和握手探测的分工：
 
@@ -247,7 +213,39 @@ void inventoryShouldPass() {
 1. 先跑清单检查（秒级，无外部依赖）
 2. 清单通过后，再跑握手探测（分钟级，需代表服务/真实环境）
 
+## 可选增强（非第一版必须）
+
+### 自动生成初始清单
+
+清单文件第一版可以人工维护。后续如果依赖项很多，可以从以下来源反推：
+
+| 来源 | 推导方式 |
+|------|---------|
+| 现有 baseline 文件 | 从 `negotiated` 字段里用的算法反推 |
+| 业务配置 | 读取 `application.yml` / `kafka.properties` / `ssl` 配置 |
+| 三方对接文档 | 人工整理伙伴要求的算法 |
+| 代码扫描 | 搜索 `ssl.enabled.protocols`、`sasl.mechanism` 等关键字 |
+
+### 增强报告输出
+
+JUnit 测试本身的断言消息 + 控制台日志已经能满足基本需求。如果需要更正式的报告，可扩展：
+
+- JSON 报告文件
+- HTML 可视化报告
+- 与 CI 报告系统集成
+
+示例：
+
+```
+[PASS] JDK TLSv1.2 仍受支持
+[PASS] JDK TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 未被禁用
+[FAIL] Kerberos etype rc4-hmac 在当前 JDK 默认禁用
+[WARN] SSH kex diffie-hellman-group14-sha256 存在但不在默认偏好前列
+```
+
 ## 实施顺序
+
+第一层最小可行实现：
 
 ```
 Step 1: 定义清单 YAML 格式
@@ -258,13 +256,17 @@ Step 3: 实现 JDK 清单扫描器（TLS / Provider / Kerberos etype）
         │
 Step 4: 实现 InventoryComparator（比对规则）
         │
-Step 5: 写一个 JUnit 测试跑起来
+Step 5: 写一个 JUnit 测试跑起来 + 接入 CI
+```
+
+后续可选：
+
+```
+Step 6: 补充 Kafka / SFTP / HTTPS 的扫描项
         │
-Step 6: 接入 CI
+Step 7: 从现有代码/配置生成初始清单
         │
-Step 7: 补充 Kafka / SFTP / HTTPS 的扫描项
-        │
-Step 8: 从现有代码/配置生成初始清单
+Step 8: 增强报告输出
 ```
 
 ## 待确认问题
